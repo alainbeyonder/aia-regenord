@@ -1,0 +1,50 @@
+# FastAPI et serveur web
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+python-multipart==0.0.6
+
+# Base de données
+psycopg2-binary==2.9.9
+SQLAlchemy==2.0.25
+alembic==1.13.1
+
+# QuickBooks Online API
+intuit-oauth==1.2.4
+python-quickbooks==0.9.5
+requests==2.31.0
+
+# Google Sheets
+google-auth==2.27.0
+google-auth-oauthlib==1.2.0
+google-auth-httplib2==0.2.0
+googleapis-common-protos==1.62.0
+gspread==6.0.0
+
+# DEXT (si API disponible, sinon file processing)
+pandas==2.1.4
+openpyxl==3.1.2
+
+# IA / LLM
+openai==1.10.0
+langchain==0.1.4
+langchain-openai==0.0.3
+
+# Utilitaires
+python-dotenv==1.0.0
+python-dateutil==2.8.2
+pytz==2023.3
+
+# Validation et sécurité
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Export PDF
+reportlab==4.0.8
+markdown==3.5.2
+
+# Tests
+pytest==7.4.4
+pytest-asyncio==0.23.3
+httpx==0.26.0
