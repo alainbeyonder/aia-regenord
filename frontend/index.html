@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIA Regenord - Tableau de Bord Financier</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 20px;
+        }
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+        .card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        .card p {
+            color: #555;
+            line-height: 1.6;
+        }
+        .button {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 12px 25px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: background 0.3s;
+            cursor: pointer;
+            border: none;
+            font-size: 1em;
+        }
+        .button:hover {
+            background: #764ba2;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        .status.active { background: #4caf50; color: white; }
+        .status.pending { background: #ff9800; color: white; }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 AIA Regenord</h1>
+            <p class="subtitle">Agent IA Financier - Projections Financières 3 Ans</p>
+            <p class="subtitle">Groupe Regenord</p>
+        </header>
+
+        <div class="dashboard">
+            <div class="card">
+                <h3>🔗 QuickBooks Online</h3>
+                <p>Connectez votre compte QuickBooks pour extraire automatiquement vos données financières.</p>
+                <span class="status pending">En attente</span>
+                <button class="button" onclick="alert('Fonction à implémenter : Connexion OAuth QBO')">Connecter QBO</button>
+            </div>
+
+            <div class="card">
+                <h3>📈 Projections Financières</h3>
+                <p>Générez des projections sur 3 ans basées sur vos données historiques et l'IA.</p>
+                <span class="status pending">Non générées</span>
+                <button class="button" onclick="alert('Fonction à implémenter : Génération projections')">Générer</button>
+            </div>
+
+            <div class="card">
+                <h3>📊 Visualisations</h3>
+                <p>Consultez vos graphiques de revenus, dépenses et profits projetés.</p>
+                <span class="status pending">Non disponible</span>
+                <button class="button" onclick="alert('Fonction à implémenter : Affichage graphiques')">Voir Graphiques</button>
+            </div>
+
+            <div class="card">
+                <h3>💾 Export Google Sheets</h3>
+                <p>Exportez automatiquement vos projections vers Google Sheets pour le suivi.</p>
+                <span class="status pending">Non configuré</span>
+                <button class="button" onclick="alert('Fonction à implémenter : Export Google Sheets')">Configurer Export</button>
+            </div>
+
+            <div class="card">
+                <h3>⚙️ Configuration</h3>
+                <p>Gérez vos paramètres, hypothèses de croissance et modèles de projection.</p>
+                <button class="button" onclick="alert('Fonction à implémenter : Paramètres')">Paramètres</button>
+            </div>
+
+            <div class="card">
+                <h3>📝 Documentation API</h3>
+                <p>Accédez à la documentation complète de l'API FastAPI.</p>
+                <a href="/docs" class="button">Voir API Docs</a>
+            </div>
+        </div>
+
+        <footer>
+            <p>&copy; 2025 Groupe Regenord | AIA Regenord v1.0</p>
+            <p>Propulsé par FastAPI, OpenAI GPT-4, QuickBooks Online API</p>
+        </footer>
+    </div>
+
+    <script>
+        // Futur: Connexion API backend FastAPI
+        console.log('AIA Regenord Dashboard chargé');
+        // Exemple d'appel API:
+        // fetch('http://localhost:8000/api/projections')
+        //   .then(response => response.json())
+        //   .then(data => console.log(data));
+    </script>
+</body>
+</html>
