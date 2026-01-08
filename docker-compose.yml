@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+<<<<<<< HEAD
   db:
     image: postgres:15-alpine
     container_name: aia_postgres
@@ -51,3 +52,50 @@ services:
 
 volumes:
   postgres_data:
+=======
+  postgres:
+    image: postgres:15-alpine
+    container_name: aia_regenord_db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-aia_regenord}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-yourpassword}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/app/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aia_network
+
+  # Redis pour le cache (optionnel mais recommandé)
+  redis:
+    image: redis:7-alpine
+    container_name: aia_regenord_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - aia_network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  aia_network:
+    driver: bridge
+>>>>>>> 3416cf3ecf2db4cefb5eb233230786eed2fd6c43
