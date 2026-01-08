@@ -1,51 +1,45 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.core.config import settings
 from app.core.database import engine, Base
-from app.api.endpoints import scenarios, qbo
-import logging
-
-# Configuration du logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-
-logger = logging.getLogger(__name__)
-
-# Créer les tables de la base de données
-Base.metadata.create_all(bind=engine)
+from app.api.router import api_router
 
 app = FastAPI(
-    title="AIA Regenord - Agent IA Financier",
-    description="API pour projections financières 3 ans avec intégration QBO, DEXT, et Google Sheets",
-    version="1.0.0"
+    title=settings.APP_NAME,
+    description="Agent IA Financier pour projections 3 ans",
+    version="1.0.0",
 )
 
-# Configuration CORS
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En production, spécifier les domaines autorisés
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Inclure les routes
-app.include_router(scenarios.router, prefix="/api")
-app.include_router(qbo.router, prefix="/api")
+# Include routers (all API routes are under /api)
+app.include_router(api_router, prefix="/api")
+
+
+@app.on_event("startup")
+async def startup():
+    # Dev only: create tables automatically
+    if settings.DEBUG:
+        Base.metadata.create_all(bind=engine)
+
 
 @app.get("/")
-def read_root():
+def root():
     return {
-        "message": "AIA Regenord - Agent IA Financier API",
+        "message": "AIA Regenord API",
         "version": "1.0.0",
-        "docs": "/docs"
+        "docs": "/docs",
     }
+
 
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)

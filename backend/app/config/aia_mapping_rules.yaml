@@ -1,0 +1,225 @@
+version: 1
+language: fr
+match_strategy:
+  method: account_name
+  normalize:
+    lowercase: true
+    remove_accents: true
+    remove_punctuation: true
+
+# Règles : la première catégorie qui "match" gagne
+# Les mots clés sont recherchés dans le nom du compte QBO normalisé
+categories:
+  # -------------------------
+  # REVENUS
+  # -------------------------
+  - key: revenue_licenses
+    label: Revenus licences et redevances
+    type: revenue
+    keywords:
+      - licence
+      - license
+      - royalty
+      - redevance
+
+  - key: revenue_services
+    label: Revenus services professionnels
+    type: revenue
+    keywords:
+      - consulting
+      - consultation
+      - project management
+      - gestion de projet
+      - services
+      - honoraires
+      - sred
+      - rsde
+      - r&d
+
+  - key: revenue_products
+    label: Ventes de produits
+    type: revenue
+    keywords:
+      - sales
+      - ventes
+      - products
+      - produits
+
+  - key: revenue_exceptional
+    label: Revenus exceptionnels
+    type: revenue
+    keywords:
+      - exceptional
+      - exceptionnel
+      - one time
+      - ponctuel
+
+  # -------------------------
+  # DÉPENSES - FINANCIÈRES
+  # -------------------------
+  - key: expense_interest
+    label: Frais financiers et intérêts
+    type: expense
+    keywords:
+      - interest
+      - interet
+      - bank charges
+      - frais bancaires
+      - frais banque
+      - loan
+      - pret
+
+  # -------------------------
+  # DÉPENSES - ASSURANCES
+  # -------------------------
+  - key: expense_insurance
+    label: Assurances
+    type: expense
+    keywords:
+      - insurance
+      - assurance
+      - edc
+
+  # -------------------------
+  # DÉPENSES - SALAIRES / GESTION
+  # -------------------------
+  - key: expense_payroll
+    label: Salaires et charges
+    type: expense
+    keywords:
+      - payroll
+      - salaire
+      - salaires
+      - wages
+      - employe
+      - employee
+
+  - key: expense_management
+    label: Frais de gestion
+    type: expense
+    keywords:
+      - management fees
+      - frais de gestion
+
+  # -------------------------
+  # DÉPENSES - PROFESSIONNELS
+  # -------------------------
+  - key: expense_legal
+    label: Juridique et professionnels
+    type: expense
+    keywords:
+      - legal
+      - juridique
+      - professional
+      - professionnels
+      - comptable
+      - accounting
+      - consultant
+
+  # -------------------------
+  # DÉPENSES - ADMIN & BUREAU
+  # -------------------------
+  - key: expense_admin
+    label: Administration et bureau
+    type: expense
+    keywords:
+      - office
+      - bureau
+      - supplies
+      - fournitures
+      - computer
+      - logiciel
+      - software
+      - web
+      - telephone
+      - communication
+      - postal
+      - courrier
+      - rent
+      - location
+      - utilities
+      - heat
+      - electric
+      - internet
+
+  # -------------------------
+  # DÉPENSES - MARKETING / COMMERCIAL
+  # -------------------------
+  - key: expense_marketing
+    label: Marketing et développement commercial
+    type: expense
+    keywords:
+      - marketing
+      - advertising
+      - promotion
+      - pub
+      - representation
+      - representation
+      - travel
+      - hotel
+      - mileage
+      - km
+      - restaurant
+
+  # -------------------------
+  # DÉPENSES - TRANSPORT / VÉHICULES
+  # -------------------------
+  - key: expense_vehicle
+    label: Transport et véhicules
+    type: expense
+    keywords:
+      - vehicle
+      - vehicule
+      - car
+      - truck
+      - lease
+      - fuel
+      - gaz
+      - gas
+      - maintenance
+      - repair
+      - repair & maint
+
+  # -------------------------
+  # R&D / INNOVATION (stratégique)
+  # -------------------------
+  - key: expense_rd
+    label: R&D et innovation
+    type: expense
+    keywords:
+      - r&d
+      - research
+      - development
+      - prototype
+      - innovation
+      - rsde
+      - sred
+
+  # -------------------------
+  # CATÉGORIES FALLBACK (doivent être en dernier)
+  # -------------------------
+  - key: revenue_other
+    label: Autres revenus
+    type: revenue
+    keywords: []
+
+  - key: expense_other
+    label: Autres dépenses
+    type: expense
+    keywords: []
+
+# -------------------------
+# FALLBACK
+# -------------------------
+fallback:
+  revenue:
+    key: revenue_other
+    label: Autres revenus
+  expense:
+    key: expense_other
+    label: Autres dépenses
+
+# Configuration globale
+settings:
+  default_months: 12
+  reconciliation_tolerance: 0.01  # Tolérance pour la réconciliation (1 centime)

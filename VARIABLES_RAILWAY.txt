@@ -1,0 +1,34 @@
+# Variables d'Environnement pour Railway
+# Copier-coller ces variables dans Railway → Service Backend → Variables
+
+QBO_ENVIRONMENT=production
+
+QBO_CLIENT_ID=ABhjTWUsPqScOqpWeCghMKHpx85MbL0fM9JQnt4uXpD4Wynk
+
+QBO_CLIENT_SECRET=d2R1L2EFjbZyNmJdcYnnbibh6AVsIVlZDFF9dc8V
+
+QBO_REDIRECT_URI=https://www.regenord.com/quickbooks-integration/callback
+
+APP_NAME=AIA Regenord
+
+APP_ENV=production
+
+DEBUG=False
+
+FRONTEND_URL=https://www.regenord.com
+
+AIA_TOKEN_ENCRYPTION_KEY=Jc8GWiI1zrJ9a-aWYgETa42PLx3FRUjbkJzQ_SEIg3c=
+
+SECRET_KEY=o8x80d_-Uu_uPbE0vASawCqen_BrSr8hVtkelay_cpU
+
+CORS_ORIGINS=["https://www.regenord.com"]
+
+LOG_LEVEL=INFO
+
+LOG_FILE=./logs/aia-regenord.log
+
+# IMPORTANT: APP_BASE_URL doit être ajouté APRÈS le premier déploiement
+# Railway donnera une URL (ex: https://aia-regenord-production.up.railway.app)
+# Ajouter alors: APP_BASE_URL=https://VOTRE-URL-RAILWAY
+# 
+# DATABASE_URL sera ajouté automatiquement par Railway quand vous ajoutez PostgreSQL

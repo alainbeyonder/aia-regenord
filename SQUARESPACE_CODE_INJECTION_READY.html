@@ -1,0 +1,306 @@
+<!-- 
+  Code d'injection Squarespace pour l'intégration QuickBooks Online - PRODUCTION
+  Instructions: Settings > Advanced > Code Injection > Footer
+  
+  ✅ CONFIGURÉ avec: https://api.regenord.com
+  ⚠️ Prêt à injecter dans Squarespace
+-->
+<script>
+(function() {
+  // ============================================
+  // CONFIGURATION - PRODUCTION
+  // ============================================
+  const BACKEND_URL = 'https://api.regenord.com'; // Backend API Production
+  const COMPANY_ID = 1; // ID de l'entreprise dans votre système
+  
+  // ============================================
+  // FONCTIONS UTILITAIRES
+  // ============================================
+  
+  function showMessage(message, type = 'info') {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `qbo-message qbo-${type}`;
+    messageDiv.textContent = message;
+    messageDiv.style.cssText = `
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 8px;
+      background: ${type === 'success' ? '#d4edda' : type === 'error' ? '#f8d7da' : '#d1ecf1'};
+      color: ${type === 'success' ? '#155724' : type === 'error' ? '#721c24' : '#0c5460'};
+      border: 1px solid ${type === 'success' ? '#c3e6cb' : type === 'error' ? '#f5c6cb' : '#bee5eb'};
+    `;
+    
+    const container = document.querySelector('.qbo-integration-container') || document.body;
+    container.insertBefore(messageDiv, container.firstChild);
+    
+    setTimeout(() => {
+      messageDiv.remove();
+    }, 5000);
+  }
+  
+  function setLoading(button, loading) {
+    if (loading) {
+      button.disabled = true;
+      button.dataset.originalText = button.textContent;
+      button.textContent = '⏳ Connexion en cours...';
+    } else {
+      button.disabled = false;
+      button.textContent = button.dataset.originalText || button.textContent;
+    }
+  }
+  
+  // ============================================
+  // FONCTIONS OAuth
+  // ============================================
+  
+  async function connectQuickBooks() {
+    const button = document.getElementById('qbo-connect-btn');
+    if (!button) return;
+    
+    setLoading(button, true);
+    
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/qbo/connect/production?company_id=${COMPANY_ID}&redirect=false`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erreur ${response.status}: ${errorText || response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.auth_url) {
+        window.location.href = data.auth_url;
+      } else {
+        throw new Error('URL d\'autorisation non reçue du serveur');
+      }
+    } catch (error) {
+      console.error('Erreur de connexion QuickBooks:', error);
+      showMessage(`Erreur de connexion: ${error.message}`, 'error');
+      setLoading(button, false);
+    }
+  }
+  
+  async function disconnectQuickBooks() {
+    if (!confirm('Êtes-vous sûr de vouloir déconnecter QuickBooks ? Cette action est irréversible.')) {
+      return;
+    }
+    
+    const button = document.getElementById('qbo-disconnect-btn');
+    if (!button) return;
+    
+    setLoading(button, true);
+    
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/qbo/disconnect?company_id=${COMPANY_ID}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erreur ${response.status}: ${errorText || response.statusText}`);
+      }
+      
+      showMessage('✅ QuickBooks déconnecté avec succès', 'success');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error) {
+      console.error('Erreur de déconnexion QuickBooks:', error);
+      showMessage(`Erreur de déconnexion: ${error.message}`, 'error');
+      setLoading(button, false);
+    }
+  }
+  
+  async function checkConnectionStatus() {
+    const statusDiv = document.getElementById('qbo-status');
+    if (!statusDiv) return;
+    
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/qbo/status?company_id=${COMPANY_ID}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Erreur ${response.status}`);
+      }
+      
+      const status = await response.json();
+      
+      const connectBtn = document.getElementById('qbo-connect-btn');
+      const disconnectBtn = document.getElementById('qbo-disconnect-btn');
+      
+      if (status.connected) {
+        statusDiv.innerHTML = `
+          <div style="padding: 20px; background: #d4edda; border: 2px solid #c3e6cb; border-radius: 8px; color: #155724;">
+            <div style="font-size: 18px; font-weight: 600; margin-bottom: 10px;">
+              ✅ QuickBooks Connecté
+            </div>
+            ${status.realm_id ? `<div style="margin-top: 8px; font-size: 14px;"><strong>Realm ID:</strong> ${status.realm_id}</div>` : ''}
+            ${status.last_sync ? `<div style="margin-top: 8px; font-size: 14px;"><strong>Dernière synchronisation:</strong> ${new Date(status.last_sync).toLocaleString('fr-CA', { dateStyle: 'long', timeStyle: 'short' })}</div>` : ''}
+          </div>
+        `;
+        if (connectBtn) connectBtn.style.display = 'none';
+        if (disconnectBtn) disconnectBtn.style.display = 'inline-block';
+      } else {
+        statusDiv.innerHTML = `
+          <div style="padding: 20px; background: #fff3cd; border: 2px solid #ffeaa7; border-radius: 8px; color: #856404;">
+            <div style="font-size: 18px; font-weight: 600; margin-bottom: 10px;">
+              ⏳ QuickBooks Non Connecté
+            </div>
+            <div style="margin-top: 8px; font-size: 14px;">
+              Cliquez sur "Connecter QuickBooks" pour synchroniser vos données financières.
+            </div>
+          </div>
+        `;
+        if (connectBtn) connectBtn.style.display = 'inline-block';
+        if (disconnectBtn) disconnectBtn.style.display = 'none';
+      }
+    } catch (error) {
+      console.error('Erreur de vérification du statut QuickBooks:', error);
+      statusDiv.innerHTML = `
+        <div style="padding: 20px; background: #f8d7da; border: 2px solid #f5c6cb; border-radius: 8px; color: #721c24;">
+          <div style="font-size: 18px; font-weight: 600; margin-bottom: 10px;">
+            ❌ Erreur de Connexion
+          </div>
+          <div style="margin-top: 8px; font-size: 14px;">
+            Impossible de vérifier le statut: ${error.message}
+            <br><small>Vérifiez que le backend est accessible à ${BACKEND_URL}</small>
+          </div>
+        </div>
+      `;
+    }
+  }
+  
+  function handleOAuthCallback() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const qboConnected = urlParams.get('qbo_connected');
+    const realmId = urlParams.get('realm_id');
+    
+    if (qboConnected === 'true') {
+      showMessage(`✅ QuickBooks connecté avec succès! Realm ID: ${realmId}`, 'success');
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setTimeout(() => checkConnectionStatus(), 1000);
+    }
+  }
+  
+  // ============================================
+  // INITIALISATION
+  // ============================================
+  
+  function initQuickBooksIntegration() {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initQuickBooksIntegration);
+      return;
+    }
+    
+    let container = document.querySelector('.qbo-integration-container');
+    
+    if (window.location.pathname.includes('quickbooks-integration') || !container) {
+      if (!container) {
+        const pageContent = document.querySelector('.page-content') || 
+                           document.querySelector('main') || 
+                           document.querySelector('#main-content') ||
+                           document.body;
+        
+        container = document.createElement('div');
+        container.className = 'qbo-integration-container';
+        container.style.cssText = 'max-width: 900px; margin: 40px auto; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;';
+        pageContent.appendChild(container);
+      }
+      
+      if (!document.getElementById('qbo-status')) {
+        container.innerHTML = `
+          <div style="text-align: center; margin-bottom: 40px;">
+            <h2 style="font-size: 32px; margin-bottom: 10px; color: #333;">🔗 Intégration QuickBooks Online</h2>
+            <p style="font-size: 16px; color: #666; max-width: 600px; margin: 0 auto;">
+              Connectez votre compte QuickBooks pour synchroniser automatiquement vos données financières 
+              et générer des projections intelligentes basées sur l'IA.
+            </p>
+          </div>
+          
+          <div id="qbo-status" style="margin: 30px 0;">
+            <div style="padding: 20px; text-align: center; background: #f5f7fa; border-radius: 8px;">
+              <p style="margin: 0; color: #666;">Chargement du statut...</p>
+            </div>
+          </div>
+          
+          <div style="text-align: center; margin: 40px 0;">
+            <button id="qbo-connect-btn" 
+                    onclick="window.connectQuickBooks()"
+                    style="
+                      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                      color: white;
+                      border: none;
+                      padding: 18px 40px;
+                      font-size: 18px;
+                      border-radius: 10px;
+                      cursor: pointer;
+                      font-weight: 600;
+                      transition: all 0.3s ease;
+                      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+                    "
+                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(102, 126, 234, 0.6)'"
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(102, 126, 234, 0.4)'">
+              🔗 Connecter QuickBooks
+            </button>
+            
+            <button id="qbo-disconnect-btn" 
+                    onclick="window.disconnectQuickBooks()"
+                    style="
+                      background: #f44336;
+                      color: white;
+                      border: none;
+                      padding: 18px 40px;
+                      font-size: 18px;
+                      border-radius: 10px;
+                      cursor: pointer;
+                      font-weight: 600;
+                      margin-left: 15px;
+                      display: none;
+                      transition: all 0.3s ease;
+                      box-shadow: 0 4px 15px rgba(244, 67, 54, 0.4);
+                    "
+                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(244, 67, 54, 0.6)'"
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(244, 67, 54, 0.4)'">
+              🚫 Déconnecter QuickBooks
+            </button>
+          </div>
+          
+          <div style="margin-top: 50px; padding: 30px; background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%); border-radius: 12px; border: 1px solid #e0e0e0;">
+            <h3 style="margin-top: 0; margin-bottom: 20px; color: #333; font-size: 24px;">ℹ️ À propos de cette intégration</h3>
+            <ul style="line-height: 2; color: #555; padding-left: 20px; margin: 0;">
+              <li><strong>Sécurisé:</strong> Connexion via OAuth 2.0, standard de l'industrie</li>
+              <li><strong>Automatique:</strong> Synchronisation des données financières en temps réel</li>
+              <li><strong>Contrôle:</strong> Vous pouvez déconnecter à tout moment</li>
+              <li><strong>Confidentiel:</strong> Les tokens sont stockés de manière sécurisée et encryptée</li>
+              <li><strong>Intelligent:</strong> Analyse IA des données pour générer des projections précises</li>
+            </ul>
+          </div>
+        `;
+      }
+      
+      window.connectQuickBooks = connectQuickBooks;
+      window.disconnectQuickBooks = disconnectQuickBooks;
+      
+      checkConnectionStatus();
+      handleOAuthCallback();
+    }
+  }
+  
+  initQuickBooksIntegration();
+  setTimeout(initQuickBooksIntegration, 1000);
+})();
+</script>
