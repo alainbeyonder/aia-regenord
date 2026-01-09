@@ -9,9 +9,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from app.core.config import settings
 from app.core.database import Base
+
+# Import all models to ensure they are registered with Base.metadata
 from app.models.company import Company
 from app.models.qbo_account import QBOAccount
 from app.models.qbo_transaction import QBOTransaction
+from app.models.qbo_transaction_line import QBOTransactionLine
+from app.models.qbo_connection import QBOConnection
+from app.models.qbo_report_snapshot import QBOReportSnapshot
 from app.models.scenario import Scenario
 from app.models.projection import Projection
 
