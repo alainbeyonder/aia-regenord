@@ -62,7 +62,7 @@ class QBOService:
 
     @staticmethod
     def _cfg(env: str = None) -> QBOConfig:
-        environment = env or os.environ.get("QBO_ENVIRONMENT", "sandbox")
+        environment = env or os.environ.get("QBO_ENVIRONMENT", "production")  # Production par défaut
         client_id = os.environ.get(f"QBO_{environment.upper()}_CLIENT_ID", os.environ["QBO_CLIENT_ID"])
         client_secret = os.environ.get(f"QBO_{environment.upper()}_CLIENT_SECRET", os.environ["QBO_CLIENT_SECRET"])
         return QBOConfig(

@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     QBO_CLIENT_ID: str
     QBO_CLIENT_SECRET: str
     QBO_REDIRECT_URI: str
-    QBO_ENVIRONMENT: str = "sandbox"
+    QBO_ENVIRONMENT: str = "production"  # Production par défaut - PAS de sandbox
     QBO_COMPANY_ID: Optional[str] = None
     
     # Google Sheets

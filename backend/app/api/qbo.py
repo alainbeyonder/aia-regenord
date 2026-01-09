@@ -121,7 +121,7 @@ def check_qbo_config():
     import os
     from app.core.config import settings
     
-    environment = os.environ.get("QBO_ENVIRONMENT", "sandbox")
+    environment = os.environ.get("QBO_ENVIRONMENT", "production")  # Production par défaut - PAS de sandbox
     client_id = os.environ.get("QBO_CLIENT_ID", "")
     client_secret = os.environ.get("QBO_CLIENT_SECRET", "")
     redirect_uri = os.environ.get("QBO_REDIRECT_URI", "")
