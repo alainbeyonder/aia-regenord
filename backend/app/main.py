@@ -6,6 +6,7 @@ from app.core.database import engine, Base
 from app.api.router import api_router
 
 # Import all models to ensure they are registered with Base.metadata
+# This ensures Alembic can detect all tables
 from app.models import (
     Company, QBOConnection, QBOAccount, QBOTransaction,
     QBOTransactionLine, QBOReportSnapshot, Scenario, Projection
