@@ -3,7 +3,7 @@ from typing import Dict, List
 from datetime import datetime
 import openai
 
-from app.config import settings
+from app.core.config import settings
 from app.qbo_client import QBOClient
 
 logger = logging.getLogger(__name__)
