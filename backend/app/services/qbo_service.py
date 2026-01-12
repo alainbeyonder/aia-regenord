@@ -18,8 +18,13 @@ from app.models.qbo_report_snapshot import QBOReportSnapshot
 from dotenv import load_dotenv
 from pathlib import Path
 
+# Charger .env local seulement s'il existe, mais ne pas écraser les variables d'environnement système
+# Dans Railway, les variables d'environnement système ont priorité
 env_path = Path(__file__).resolve().parents[2] / ".env"  # backend/.env
-load_dotenv(dotenv_path=env_path)
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path, override=False)  # override=False pour préserver les variables système
+else:
+    load_dotenv()  # Charger depuis le répertoire courant si .env n'existe pas
 
 @dataclass
 class QBOConfig:
