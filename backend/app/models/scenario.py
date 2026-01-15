@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, JSON
+from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, JSON, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -9,6 +9,7 @@ class Scenario(Base):
     __tablename__ = "scenarios"
 
     id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), index=True, nullable=False)
     name = Column(String(255), nullable=False)
 
     description = Column(Text, nullable=True)
@@ -18,7 +19,8 @@ class Scenario(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
-    # ✅ relation attendue par SQLAlchemy / Projection
+    # Relations
+    company = relationship("Company", back_populates="scenarios")
     projections = relationship(
         "Projection",
         back_populates="scenario",
