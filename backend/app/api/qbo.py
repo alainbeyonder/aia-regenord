@@ -61,12 +61,30 @@ def qbo_connect_production(company_id: int, redirect: bool = True):
 
 
 @router.get("/callback")
-def qbo_callback(code: str, realmId: str, state: str):
+def qbo_callback(
+    code: Optional[str] = None,
+    realmId: Optional[str] = None,
+    state: Optional[str] = None,
+    error: Optional[str] = None,
+    error_description: Optional[str] = None,
+):
     """
     Reçoit le code OAuth et le realmId, échange contre tokens et sauvegarde.
     `state` contient le company_id (MVP).
     Redirige vers le frontend ou Squarespace après connexion réussie.
     """
+    # Gérer les erreurs OAuth renvoyées par QuickBooks
+    if error:
+        frontend_url = settings.FRONTEND_URL or "https://www.regenord.com"
+        error_msg = error_description or error
+        return RedirectResponse(
+            url=f"{frontend_url}/quickbooks-integration?error={error}&message={error_msg}"
+        )
+
+    # Vérifier les paramètres requis
+    if not code or not realmId or not state:
+        raise HTTPException(status_code=400, detail="Paramètres OAuth manquants")
+
     QBOService.handle_callback(code=code, realm_id=realmId, state=state)
     
     # Déterminer l'URL de redirection
