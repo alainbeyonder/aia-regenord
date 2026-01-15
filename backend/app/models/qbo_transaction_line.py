@@ -1,12 +1,14 @@
-from sqlalchemy import Column, Integer, String, Date, DateTime, Numeric, Text
+from sqlalchemy import Column, Integer, String, Date, DateTime, Numeric, Text, ForeignKey
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from app.core.database import Base
 
 class QBOTransactionLine(Base):
     __tablename__ = "qbo_transaction_lines"
 
     id = Column(Integer, primary_key=True, index=True)
-    company_id = Column(Integer, index=True, nullable=False)
+    company_id = Column(Integer, ForeignKey("companies.id"), index=True, nullable=False)
+    transaction_id = Column(Integer, ForeignKey("qbo_transactions.id"), index=True, nullable=False)
 
     qbo_txn_id = Column(String, index=True, nullable=False)
     qbo_txn_type = Column(String, nullable=True)
@@ -22,3 +24,7 @@ class QBOTransactionLine(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    company = relationship("Company", back_populates="qbo_transaction_lines")
+    transaction = relationship("QBOTransaction", back_populates="transaction_lines")
