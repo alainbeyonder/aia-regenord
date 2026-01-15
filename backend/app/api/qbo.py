@@ -30,21 +30,8 @@ def qbo_connect(company_id: int):
     Redirige l'utilisateur vers Intuit OAuth pour connecter QuickBooks.
     """
     # TODO (prod): signer `state` (JWT/HMAC). MVP: state = company_id
-    url = QBOService.get_authorization_url(company_id=company_id)
+    url = QBOService.get_authorization_url(company_id=company_id, env="production")
     return RedirectResponse(url=url)
-
-
-@router.get("/connect/sandbox")
-def qbo_connect_sandbox(company_id: int, redirect: bool = True):
-    """
-    Redirige l'utilisateur vers Intuit OAuth Sandbox.
-    Si redirect=False, retourne l'URL en JSON.
-    """
-    url = QBOService.get_authorization_url(company_id=company_id, env="sandbox")
-    if redirect:
-        return RedirectResponse(url=url)
-    else:
-        return {"auth_url": url, "company_id": company_id}
 
 
 @router.get("/connect/production")
