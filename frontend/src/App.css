@@ -251,3 +251,53 @@ textarea {
   font-size: 13px;
   color: var(--muted);
 }
+
+.panel-list {
+  display: grid;
+  gap: 12px;
+}
+
+.panel-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fafbff;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tag {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  text-transform: capitalize;
+}
+
+.tag.validated {
+  border-color: #95de64;
+  background: #f6ffed;
+}
+
+.result {
+  margin-top: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.result-json {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  font-size: 12px;
+  max-height: 220px;
+  overflow: auto;
+}

@@ -5,6 +5,40 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const initialLogin = { email: '', password: '' };
 const initialRequest = { company_name: '', requester_name: '', email: '', phone: '', message: '' };
+const defaultAssumptionPayload = {
+  company_id: 1,
+  scenario_default: 'realistic',
+  horizon: { months_1: 12, years_2_3: 2 },
+  revenue: {
+    monthly_growth_rate: 0.05,
+    events: [{ month: 4, name: 'New license', monthly_amount: 8000, probability: 0.8 }],
+  },
+  costs: {
+    fixed_costs_annual_inflation: 0.03,
+    events: [{ month: 6, name: 'New hire', monthly_amount: 6500 }],
+    optimization: [{ category_key: 'expense_admin', reduction_percent: 0.1, start_month: 7 }],
+  },
+  debt: {
+    mode: 'interest_only_then_resume',
+    interest_only_months: 6,
+    resume_mode: 'normal',
+    equity_backstop: { enabled: true, max_amount: 65000, trigger_min_cash: 20000 },
+  },
+  rsde: {
+    enabled: true,
+    eligible_salary_share: 0.8,
+    credit_estimated_amount: 75000,
+    prudence_factor: 0.75,
+    refund_delay_months: 9,
+  },
+  ias38: {
+    enabled: true,
+    capitalization_salary_share: 0.8,
+    apply_to_overheads: true,
+    overhead_share: 0.8,
+    amortization: { enabled: false, start_month: 0, useful_life_years: 5 },
+  },
+};
 
 function App() {
   const [activeTab, setActiveTab] = useState('signin');
@@ -15,6 +49,10 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [auth, setAuth] = useState({ token: null, user: null, mustChangePassword: false });
   const [uploadState, setUploadState] = useState({ pl: null, bs: null, loans: null });
+  const [assumptionSets, setAssumptionSets] = useState([]);
+  const [simulationRuns, setSimulationRuns] = useState([]);
+  const [selectedRun, setSelectedRun] = useState(null);
+  const [resultTab, setResultTab] = useState('pnl');
 
   useEffect(() => {
     const stored = localStorage.getItem('aia_auth');
@@ -30,12 +68,148 @@ function App() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!auth.token || auth.mustChangePassword) return;
+    fetchAssumptions();
+    fetchRuns();
+  }, [auth.token, auth.mustChangePassword]);
+
   const persistAuth = (nextAuth) => {
     setAuth(nextAuth);
     localStorage.setItem('aia_auth', JSON.stringify(nextAuth));
   };
 
   const showStatus = (type, message) => setStatus({ type, message });
+
+  const authHeaders = auth.token
+    ? { Authorization: `Bearer ${auth.token}` }
+    : {};
+
+  const getCompanyId = () => auth.user?.company_id;
+
+  const fetchAssumptions = async () => {
+    const companyId = getCompanyId();
+    if (!companyId) return;
+    const response = await fetch(`${API_URL}/api/aia/assumptions?company_id=${companyId}`, {
+      headers: authHeaders,
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || 'Failed to load assumption sets');
+    }
+    setAssumptionSets(data);
+  };
+
+  const fetchRuns = async () => {
+    const companyId = getCompanyId();
+    if (!companyId) return;
+    const response = await fetch(`${API_URL}/api/aia/runs?company_id=${companyId}`, {
+      headers: authHeaders,
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || 'Failed to load simulation runs');
+    }
+    setSimulationRuns(data);
+  };
+
+  const createAssumptionSet = async () => {
+    const companyId = getCompanyId();
+    if (!companyId) return;
+    setLoading(true);
+    showStatus('', '');
+    try {
+      const response = await fetch(`${API_URL}/api/aia/assumptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({
+          company_id: companyId,
+          name: `V1 Baseline ${new Date().toLocaleDateString()}`,
+          scenario_key: 'realistic',
+          payload_json: { ...defaultAssumptionPayload, company_id: companyId },
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Failed to create assumption set');
+      }
+      await fetchAssumptions();
+      showStatus('success', 'Assumption set created.');
+    } catch (error) {
+      showStatus('error', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const validateAssumptionSet = async (assumptionId) => {
+    setLoading(true);
+    showStatus('', '');
+    try {
+      const response = await fetch(`${API_URL}/api/aia/assumptions/${assumptionId}/validate`, {
+        method: 'POST',
+        headers: authHeaders,
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Validation failed');
+      }
+      await fetchAssumptions();
+      showStatus('success', 'Assumption set validated.');
+    } catch (error) {
+      showStatus('error', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runSimulation = async (assumptionId) => {
+    const companyId = getCompanyId();
+    if (!companyId) return;
+    setLoading(true);
+    showStatus('', '');
+    try {
+      const response = await fetch(`${API_URL}/api/aia/simulate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({
+          company_id: companyId,
+          assumption_set_id: assumptionId,
+          period_start: new Date().toISOString().slice(0, 10),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Simulation failed');
+      }
+      await fetchRuns();
+      showStatus('success', `Simulation queued. Run ${data.run_id}.`);
+    } catch (error) {
+      showStatus('error', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadRun = async (runId) => {
+    setLoading(true);
+    showStatus('', '');
+    try {
+      const response = await fetch(`${API_URL}/api/aia/runs/${runId}`, {
+        headers: authHeaders,
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Run not found');
+      }
+      setSelectedRun(data);
+      setResultTab('pnl');
+    } catch (error) {
+      showStatus('error', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async (event) => {
     event.preventDefault();
@@ -115,6 +289,9 @@ function App() {
     setAuth({ token: null, user: null, mustChangePassword: false });
     setLoginForm(initialLogin);
     showStatus('', '');
+    setAssumptionSets([]);
+    setSimulationRuns([]);
+    setSelectedRun(null);
   };
 
   const uploadFile = async (fileType, file) => {
@@ -330,21 +507,96 @@ function App() {
             </div>
 
             <div className="card">
-              <h3>Assumptions</h3>
-              <p>Open the assumptions form.</p>
-              <button className="primary" type="button" onClick={() => showStatus('info', 'Assumptions page coming soon.')}
-                disabled={loading}
-              >
-                Open assumptions
+              <h3>Assumption Sets</h3>
+              <p>Create and validate assumption sets used for simulations.</p>
+              <button className="primary" type="button" onClick={createAssumptionSet} disabled={loading}>
+                Create new set
               </button>
+              <div className="panel-list">
+                {assumptionSets.length === 0 && <span className="hint">No assumption sets yet.</span>}
+                {assumptionSets.map((item) => (
+                  <div key={item.id} className="panel-row">
+                    <div>
+                      <strong>{item.name}</strong>
+                      <div className="hint">#{item.id} · {item.scenario_key}</div>
+                    </div>
+                    <div className="panel-actions">
+                      <span className={`tag ${item.status}`}>{item.status}</span>
+                      {item.status !== 'validated' && (
+                        <button className="secondary" type="button" onClick={() => validateAssumptionSet(item.id)} disabled={loading}>
+                          Validate
+                        </button>
+                      )}
+                      {item.status === 'validated' && (
+                        <button className="primary" type="button" onClick={() => runSimulation(item.id)} disabled={loading}>
+                          Simulate
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div className="card disabled">
-              <h3>Connect QuickBooks</h3>
-              <p>Coming soon</p>
-              <button className="secondary" type="button" disabled>
-                Coming soon
-              </button>
+            <div className="card">
+              <h3>Simulation Runs</h3>
+              <p>Run and inspect simulation outputs.</p>
+              <div className="panel-list">
+                {simulationRuns.length === 0 && <span className="hint">No runs yet.</span>}
+                {simulationRuns.map((run) => (
+                  <div key={run.id} className="panel-row">
+                    <div>
+                      <strong>Run #{run.id}</strong>
+                      <div className="hint">{run.period_start} → {run.period_end}</div>
+                    </div>
+                    <button className="secondary" type="button" onClick={() => loadRun(run.id)} disabled={loading}>
+                      View result
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {selectedRun && (
+                <div className="result">
+                  <div className="tabs result-tabs">
+                    <button
+                      className={resultTab === 'pnl' ? 'tab active' : 'tab'}
+                      type="button"
+                      onClick={() => setResultTab('pnl')}
+                    >
+                      P&L
+                    </button>
+                    <button
+                      className={resultTab === 'balance_sheet' ? 'tab active' : 'tab'}
+                      type="button"
+                      onClick={() => setResultTab('balance_sheet')}
+                    >
+                      Balance sheet
+                    </button>
+                    <button
+                      className={resultTab === 'cashflow' ? 'tab active' : 'tab'}
+                      type="button"
+                      onClick={() => setResultTab('cashflow')}
+                    >
+                      Cashflow
+                    </button>
+                  </div>
+                  <pre className="result-json">
+                    {JSON.stringify(
+                      resultTab === 'pnl'
+                        ? selectedRun.result_json?.pnl_monthly
+                        : resultTab === 'balance_sheet'
+                          ? selectedRun.result_json?.balance_sheet_monthly
+                          : selectedRun.result_json?.cashflow_monthly,
+                      null,
+                      2
+                    )}
+                  </pre>
+                  <div className="hint">
+                    Reconciliation delta:{' '}
+                    {selectedRun.result_json?.reconciliation?.delta ?? 'n/a'}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </section>
