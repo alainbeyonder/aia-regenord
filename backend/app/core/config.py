@@ -40,8 +40,19 @@ class Settings(BaseSettings):
 
     # Security
     ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1"]
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8000", "http://127.0.0.1:8000"]
-
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "https://www.regenord.com",
+        "https://regenord.com",
+    ]
+    JWT_SECRET_KEY: str = "CHANGE_ME_TO_A_LONG_RANDOM_STRING"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    LOGIN_RATE_LIMIT_MAX: int = 5
+    LOGIN_RATE_LIMIT_WINDOW_SECONDS: int = 300
     # Logging
     LOG_LEVEL: str = "INFO"
     LOG_FILE: str = "./logs/aia-regenord.log"

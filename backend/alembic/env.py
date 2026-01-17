@@ -19,6 +19,9 @@ from app.models.qbo_connection import QBOConnection
 from app.models.qbo_report_snapshot import QBOReportSnapshot
 from app.models.scenario import Scenario
 from app.models.projection import Projection
+from app.models.user import User
+from app.models.access_request import AccessRequest
+from app.models.upload import Upload
 
 config = context.config
 

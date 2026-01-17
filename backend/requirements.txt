@@ -10,6 +10,7 @@ python-multipart==0.0.6
 # =========================
 pydantic==2.5.3
 pydantic-settings==2.1.0
+email-validator==2.3.0
 python-dotenv==1.0.0
 pyyaml==6.0.1
 
@@ -33,6 +34,7 @@ python-dateutil==2.8.2
 cryptography==42.0.2
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+bcrypt<4.0.0
 
 # =========================
 # Data Processing (DEXT, CSV, Excel)

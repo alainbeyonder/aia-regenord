@@ -11,6 +11,7 @@ class Scenario(Base):
     id = Column(Integer, primary_key=True, index=True)
     company_id = Column(Integer, ForeignKey("companies.id"), index=True, nullable=False)
     name = Column(String(255), nullable=False)
+    company_id = Column(Integer, ForeignKey("companies.id"), index=True, nullable=False)
 
     description = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
@@ -26,3 +27,6 @@ class Scenario(Base):
         back_populates="scenario",
         cascade="all, delete-orphan",
     )
+
+    # Relation avec Company
+    company = relationship("Company", back_populates="scenarios")
