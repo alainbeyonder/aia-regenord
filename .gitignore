@@ -201,6 +201,26 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# macOS
+.DS_Store
+
+# Environment files
+.env.*
+
+# Alembic / backups
+alembic/versions/*.bak
+*.bak
+
+# IDE
+.vscode/
+.idea/
+
+# Node / frontend
+node_modules/
+
+# Docker
+docker-data/
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
