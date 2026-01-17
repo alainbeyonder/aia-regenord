@@ -329,6 +329,61 @@ curl -X POST http://localhost:8000/api/scenarios/1/calculate
 curl http://localhost:8000/api/scenarios/1/projections
 ```
 
+## 🧾 Format JSON V1 (Scénario & Hypothèses)
+
+Ce format décrit les hypothèses V1 attendues côté backend. Il sert de référence pour l’intégration.
+
+```json
+{
+  "company_id": 1,
+  "scenario_default": "realistic",
+  "horizon": { "months_1": 12, "years_2_3": 2 },
+  "revenue": {
+    "monthly_growth_rate": 0.05,
+    "events": [
+      { "month": 4, "name": "New license", "monthly_amount": 8000, "probability": 0.8 }
+    ]
+  },
+  "costs": {
+    "fixed_costs_annual_inflation": 0.03,
+    "events": [
+      { "month": 6, "name": "New hire", "monthly_amount": 6500 }
+    ],
+    "optimization": [
+      { "category_key": "expense_admin", "reduction_percent": 0.10, "start_month": 7 }
+    ]
+  },
+  "debt": {
+    "mode": "interest_only_then_resume",
+    "interest_only_months": 6,
+    "resume_mode": "normal",
+    "equity_backstop": {
+      "enabled": true,
+      "max_amount": 65000,
+      "trigger_min_cash": 20000
+    }
+  },
+  "rsde": {
+    "enabled": true,
+    "eligible_salary_share": 0.80,
+    "credit_estimated_amount": 75000,
+    "prudence_factor": 0.75,
+    "refund_delay_months": 9
+  },
+  "ias38": {
+    "enabled": true,
+    "capitalization_salary_share": 0.80,
+    "apply_to_overheads": true,
+    "overhead_share": 0.80,
+    "amortization": {
+      "enabled": false,
+      "start_month": 0,
+      "useful_life_years": 5
+    }
+  }
+}
+```
+
 ## 📚 Documentation Complète
 
 La documentation complète avec tout le code source se trouve dans:
@@ -459,3 +514,133 @@ Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
 **📌 Note Importante**: Tous les fichiers sources avec leur code complet sont disponibles dans le [document Google Docs](https://docs.google.com/document/d/1BkkW_QkMIhqabvljN2VQnP9XkAkizwlVNXoa0cXNUYk/edit). Suivez le guide de création des fichiers ci-dessus pour mettre en place le projet complet.
 
 Créé avec ❤️ pour Groupe Regenord Inc. | Version 1.0 | Janvier 2026
+
+
+## 🔐 V1 Auth (API-only admin)
+
+Admin approval is API-only (no admin UI). Use the seed script once to create the initial admin.
+
+### Seed admin user
+
+```bash
+ADMIN_SEED_PASSWORD="YourStrongAdminPassword!" python3 scripts/seed_admin.py
+```
+
+Admin account:
+- email: `admin@beyonders.tech`
+- role: `admin`
+- status: `active`
+
+### Request access (public)
+
+```bash
+BASE="http://localhost:8000"
+
+curl -X POST "$BASE/api/auth/request-access"   -H "Content-Type: application/json"   -d '{
+    "company_name": "Regenord GROUP",
+    "requester_name": "John Doe",
+    "email": "john@example.com",
+    "phone": "+1 506-000-0000",
+    "message": "I want to test PDF mode."
+  }'
+```
+
+### Admin login
+
+```bash
+curl -X POST "$BASE/api/auth/login"   -H "Content-Type: application/json"   -d '{
+    "email": "admin@beyonders.tech",
+    "password": "YourStrongAdminPassword!"
+  }'
+```
+
+### Approve request (admin only)
+
+```bash
+curl -X POST "$BASE/api/auth/admin/approve-request"   -H "Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN"   -H "Content-Type: application/json"   -d '{
+    "request_id": 1,
+    "role": "client"
+  }'
+```
+
+Response includes a `temp_password` (V1). Share it manually with the user.
+
+### User sets a new password (first login)
+
+```bash
+curl -X POST "$BASE/api/auth/set-password"   -H "Authorization: Bearer USER_ACCESS_TOKEN"   -H "Content-Type: application/json"   -d '{
+    "new_password": "MyNewStrongPassword123!"
+  }'
+```
+
+## 📊 Assumptions V1 + Simulation Runs
+
+Ces endpoints sont protégés par JWT et scoped par `company_id`.
+
+### Create assumption set (draft)
+
+```bash
+curl -X POST "$BASE/api/aia/assumptions" \
+  -H "Authorization: Bearer USER_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "company_id": 1,
+    "name": "V1 Baseline",
+    "scenario_key": "realistic",
+    "payload_json": {
+      "company_id": 1,
+      "scenario_default": "realistic",
+      "horizon": { "months_1": 12, "years_2_3": 2 }
+    }
+  }'
+```
+
+### List assumption sets
+
+```bash
+curl -X GET "$BASE/api/aia/assumptions?company_id=1" \
+  -H "Authorization: Bearer USER_ACCESS_TOKEN"
+```
+
+### Get assumption set detail
+
+```bash
+curl -X GET "$BASE/api/aia/assumptions/1" \
+  -H "Authorization: Bearer USER_ACCESS_TOKEN"
+```
+
+### Validate assumption set
+
+```bash
+curl -X POST "$BASE/api/aia/assumptions/1/validate" \
+  -H "Authorization: Bearer USER_ACCESS_TOKEN"
+```
+
+### Run simulation (placeholder output)
+
+```bash
+curl -X POST "$BASE/api/aia/simulate" \
+  -H "Authorization: Bearer USER_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "company_id": 1,
+    "assumption_set_id": 1,
+    "period_start": "2026-01-01",
+    "horizon_months": 12,
+    "horizon_years": 2
+  }'
+```
+
+### List simulation runs
+
+```bash
+curl -X GET "$BASE/api/aia/runs?company_id=1" \
+  -H "Authorization: Bearer USER_ACCESS_TOKEN"
+```
+
+### Get simulation run detail
+
+```bash
+curl -X GET "$BASE/api/aia/runs/1" \
+  -H "Authorization: Bearer USER_ACCESS_TOKEN"
+```

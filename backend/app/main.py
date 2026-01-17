@@ -9,7 +9,8 @@ from app.api.router import api_router
 # This ensures Alembic can detect all tables
 from app.models import (
     Company, QBOConnection, QBOAccount, QBOTransaction,
-    QBOTransactionLine, QBOReportSnapshot, Scenario, Projection
+    QBOTransactionLine, QBOReportSnapshot, Scenario, Projection,
+    User, AccessRequest, Upload, AssumptionSet, SimulationRun,
 )
 
 app = FastAPI(
@@ -39,9 +40,12 @@ async def startup():
     try:
         import logging
         logger = logging.getLogger(__name__)
-        logger.info("Creating database tables if they don't exist...")
-        Base.metadata.create_all(bind=engine)
-        logger.info("Database tables created/verified successfully")
+        if settings.DEBUG:
+            logger.info("Creating database tables if they don't exist...")
+            Base.metadata.create_all(bind=engine)
+            logger.info("Database tables created/verified successfully")
+        else:
+            logger.info("Skipping automatic table creation (DEBUG=False)")
     except Exception as e:
         # Log error but don't crash the app
         import logging

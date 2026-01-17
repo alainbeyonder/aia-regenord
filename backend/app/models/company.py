@@ -15,5 +15,9 @@ class Company(Base):
 
     # Relations
     qbo_accounts = relationship("QBOAccount", back_populates="company")
-    scenarios = relationship("Scenario", back_populates="company")
     qbo_transaction_lines = relationship("QBOTransactionLine", back_populates="company")
+    scenarios = relationship("Scenario", back_populates="company")
+    users = relationship("User", back_populates="company")
+    uploads = relationship("Upload", back_populates="company")
+    assumption_sets = relationship("AssumptionSet", back_populates="company")
+    simulation_runs = relationship("SimulationRun", back_populates="company")

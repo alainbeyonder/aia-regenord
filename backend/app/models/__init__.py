@@ -10,6 +10,11 @@ from .qbo_transaction_line import QBOTransactionLine
 from .qbo_report_snapshot import QBOReportSnapshot
 from .scenario import Scenario
 from .projection import Projection
+from .user import User
+from .access_request import AccessRequest
+from .upload import Upload
+from .assumption_set import AssumptionSet
+from .simulation_run import SimulationRun
 
 __all__ = [
     "Base",
@@ -21,4 +26,9 @@ __all__ = [
     "QBOReportSnapshot",
     "Scenario",
     "Projection",
+    "User",
+    "AccessRequest",
+    "Upload",
+    "AssumptionSet",
+    "SimulationRun",
 ]

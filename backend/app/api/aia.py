@@ -5,13 +5,19 @@ Endpoints API pour les vues financières AIA.
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
-from typing import Optional
-from pydantic import BaseModel
+from typing import Optional, Any, Dict, List
+from pydantic import BaseModel, Field
 import csv
 import io
-from datetime import datetime
+from datetime import datetime, date
+from dateutil.relativedelta import relativedelta
 
 from app.core.database import get_db
+from app.api.auth import get_current_user
+from app.models.assumption_set import AssumptionSet
+from app.models.simulation_run import SimulationRun
+from app.models.user import User
+from app.services.aia_simulation_service import AIASimulationService
 from app.services.aia_mapping_service import AIAFinancialMappingService
 
 router = APIRouter(prefix="/aia", tags=["aia"])
@@ -26,6 +32,63 @@ class FinancialViewResponse(BaseModel):
     accounts_mapping: dict
     reconciliation: dict
     data_source: str
+
+
+class AssumptionSetCreate(BaseModel):
+    company_id: int
+    name: str = Field(..., min_length=2, max_length=255)
+    scenario_key: str = Field(..., min_length=2, max_length=100)
+    payload_json: Dict[str, Any]
+
+
+class AssumptionSetResponse(BaseModel):
+    id: int
+    company_id: int
+    name: str
+    scenario_key: str
+    status: str
+    created_by_user_id: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class SimulationCreate(BaseModel):
+    company_id: int
+    assumption_set_id: int
+    period_start: date
+    horizon_months: int = Field(12, ge=1, le=36)
+    horizon_years: int = Field(2, ge=0, le=5)
+    baseline_refs: Optional[Dict[str, Any]] = None
+
+
+class SimulationRunResponse(BaseModel):
+    id: int
+    company_id: int
+    assumption_set_id: int
+    period_start: date
+    period_end: date
+    horizon_months: int
+    horizon_years: int
+    result_json: Dict[str, Any]
+    created_by_user_id: int
+    created_at: datetime
+
+
+def _resolve_company_id(company_id: Optional[int], current_user: User) -> int:
+    if current_user.role != "admin":
+        if not current_user.company_id:
+            raise HTTPException(status_code=400, detail="User has no company")
+        if company_id is not None and company_id != current_user.company_id:
+            raise HTTPException(status_code=403, detail="Forbidden")
+        return current_user.company_id
+    if company_id is None:
+        raise HTTPException(status_code=400, detail="company_id required")
+    return company_id
+
+
+def _ensure_company_access(company_id: int, current_user: User) -> None:
+    if current_user.role != "admin" and company_id != current_user.company_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
 
 
 @router.get("/view", response_model=FinancialViewResponse)
@@ -133,3 +196,141 @@ def export_to_google_sheets(
             status_code=500,
             detail=f"Erreur lors de la génération de l'export: {str(e)}"
         )
+
+
+@router.post("/assumptions", response_model=AssumptionSetResponse)
+def create_assumption_set(
+    payload: AssumptionSetCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    company_id = _resolve_company_id(payload.company_id, current_user)
+    assumption_set = AssumptionSet(
+        company_id=company_id,
+        name=payload.name,
+        scenario_key=payload.scenario_key,
+        payload_json=payload.payload_json,
+        status="draft",
+        created_by_user_id=current_user.id,
+    )
+    db.add(assumption_set)
+    db.commit()
+    db.refresh(assumption_set)
+    return assumption_set
+
+
+@router.get("/assumptions", response_model=List[AssumptionSetResponse])
+def list_assumption_sets(
+    company_id: Optional[int] = Query(None, description="ID de l'entreprise"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    company_id = _resolve_company_id(company_id, current_user)
+    return (
+        db.query(AssumptionSet)
+        .filter(AssumptionSet.company_id == company_id)
+        .order_by(AssumptionSet.created_at.desc())
+        .all()
+    )
+
+
+@router.get("/assumptions/{assumption_id}", response_model=AssumptionSetResponse)
+def get_assumption_set(
+    assumption_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    assumption_set = db.query(AssumptionSet).filter(AssumptionSet.id == assumption_id).one_or_none()
+    if not assumption_set:
+        raise HTTPException(status_code=404, detail="Assumption set not found")
+    _ensure_company_access(assumption_set.company_id, current_user)
+    return assumption_set
+
+
+@router.post("/assumptions/{assumption_id}/validate", response_model=AssumptionSetResponse)
+def validate_assumption_set(
+    assumption_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    assumption_set = db.query(AssumptionSet).filter(AssumptionSet.id == assumption_id).one_or_none()
+    if not assumption_set:
+        raise HTTPException(status_code=404, detail="Assumption set not found")
+    _ensure_company_access(assumption_set.company_id, current_user)
+    assumption_set.status = "validated"
+    assumption_set.updated_at = datetime.utcnow()
+    db.add(assumption_set)
+    db.commit()
+    db.refresh(assumption_set)
+    return assumption_set
+
+
+@router.post("/simulate")
+def simulate(
+    payload: SimulationCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    company_id = _resolve_company_id(payload.company_id, current_user)
+    assumption_set = (
+        db.query(AssumptionSet)
+        .filter(AssumptionSet.id == payload.assumption_set_id)
+        .one_or_none()
+    )
+    if not assumption_set:
+        raise HTTPException(status_code=404, detail="Assumption set not found")
+    if assumption_set.company_id != company_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    period_end = payload.period_start + relativedelta(
+        months=payload.horizon_months + (payload.horizon_years * 12)
+    )
+    result_json = AIASimulationService.build_placeholder_result(
+        company_id=company_id,
+        assumption_set_id=payload.assumption_set_id,
+        horizon_months=payload.horizon_months,
+        horizon_years=payload.horizon_years,
+    )
+
+    run = SimulationRun(
+        company_id=company_id,
+        assumption_set_id=payload.assumption_set_id,
+        period_start=payload.period_start,
+        period_end=period_end,
+        horizon_months=payload.horizon_months,
+        horizon_years=payload.horizon_years,
+        result_json=result_json,
+        created_by_user_id=current_user.id,
+    )
+    db.add(run)
+    db.commit()
+    db.refresh(run)
+    return {"run_id": run.id}
+
+
+@router.get("/runs", response_model=List[SimulationRunResponse])
+def list_simulation_runs(
+    company_id: Optional[int] = Query(None, description="ID de l'entreprise"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    company_id = _resolve_company_id(company_id, current_user)
+    return (
+        db.query(SimulationRun)
+        .filter(SimulationRun.company_id == company_id)
+        .order_by(SimulationRun.created_at.desc())
+        .all()
+    )
+
+
+@router.get("/runs/{run_id}", response_model=SimulationRunResponse)
+def get_simulation_run(
+    run_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    run = db.query(SimulationRun).filter(SimulationRun.id == run_id).one_or_none()
+    if not run:
+        raise HTTPException(status_code=404, detail="Simulation run not found")
+    _ensure_company_access(run.company_id, current_user)
+    return run
