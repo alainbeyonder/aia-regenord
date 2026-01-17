@@ -221,6 +221,54 @@ node_modules/
 # Docker
 docker-data/
 
+# Local artifacts / reports
+*.pid
+tmp.pdf
+backend/aia-regenord__backup
+backend/UPDATE_RAILWAY_REDIRECT.md
+AUTHENTIFIER_PUIS_LANCER.md
+COMMANDES_RAILWAY_RAPIDES.md
+DEPLOIEMENT_RAILWAY_SIMPLE.md
+ETAPE_PAR_ETAPE_RAILWAY.md
+GUIDE_DEMARRAGE_LOCALHOST.md
+GUIDE_FINAL_INJECTION_SQUARESPACE.md
+RAILWAY_DEPLOIEMENT_MAINTENANT.md
+RAPPORT_TEST_LOCALHOST.md
+RAPPORT_VERIFICATIONS.txt
+RAPPORT_VERIFICATIONS_FINAL.md
+
+# Temp / runtime
+*.pid
+tmp.pdf
+tmp/
+temp/
+.cache/
+
+# Docs & backups (local only for now)
+docs/
+backups/
+scripts/
+
+# Local backups
+backend/aia-regenord__backup/
+
+# Temporary files
+*.pid
+tmp.pdf
+tmp/
+backups/
+
+# OS
+.DS_Store
+
+# Tests & exports
+*.pdf
+*.csv
+*.xlsx
+
+# OS / tooling
+.DS_Store
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
