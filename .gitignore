@@ -206,6 +206,7 @@ cython_debug/
 
 # Environment files
 .env.*
+!.env.local.example
 
 # Alembic / backups
 alembic/versions/*.bak

@@ -227,6 +227,20 @@ cd ../frontend
 npm install
 ```
 
+### Config frontend API base
+
+Créez un fichier `frontend/.env.local` (ou copiez l’exemple) pour pointer l’API :
+
+```bash
+cp frontend/.env.local.example frontend/.env.local
+```
+
+Puis ajustez la valeur :
+
+```env
+VITE_API_BASE=http://127.0.0.1:8000
+```
+
 ### Étape 7: Initialiser la Base de Données
 
 ```bash
@@ -631,6 +645,20 @@ curl -X POST "$BASE/api/aia/simulate" \
   }'
 ```
 
+### Run simulation with PDF baseline
+
+```bash
+curl -X POST "$BASE/api/aia/simulate" \
+  -H "Authorization: Bearer USER_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "company_id": 1,
+    "assumption_set_id": 1,
+    "period_start": "2026-01-01",
+    "baseline": { "type": "pdf", "analysis_id": 1 }
+  }'
+```
+
 ### List simulation runs
 
 ```bash
@@ -643,6 +671,14 @@ curl -X GET "$BASE/api/aia/runs?company_id=1" \
 ```bash
 curl -X GET "$BASE/api/aia/runs/1" \
   -H "Authorization: Bearer USER_ACCESS_TOKEN"
+```
+
+### Export simulation PDF
+
+```bash
+curl -L "$BASE/api/aia/runs/1/export.pdf" \
+  -H "Authorization: Bearer USER_ACCESS_TOKEN" \
+  -o AIA_Report_company1_run1.pdf
 ```
 
 ## 📄 PDF Analyze V1

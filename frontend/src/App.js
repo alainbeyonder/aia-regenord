@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import './App.css';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API_BASE = (import.meta?.env?.VITE_API_BASE) || 'http://127.0.0.1:8000';
 
 const initialLogin = { email: '', password: '' };
 const initialRequest = { company_name: '', requester_name: '', email: '', phone: '', message: '' };
@@ -95,7 +95,7 @@ function App() {
   const fetchAssumptions = async () => {
     const companyId = getCompanyId();
     if (!companyId) return;
-    const response = await fetch(`${API_URL}/api/aia/assumptions?company_id=${companyId}`, {
+    const response = await fetch(`${API_BASE}/api/aia/assumptions?company_id=${companyId}`, {
       headers: authHeaders,
     });
     const data = await response.json();
@@ -108,7 +108,7 @@ function App() {
   const fetchRuns = async () => {
     const companyId = getCompanyId();
     if (!companyId) return;
-    const response = await fetch(`${API_URL}/api/aia/runs?company_id=${companyId}`, {
+    const response = await fetch(`${API_BASE}/api/aia/runs?company_id=${companyId}`, {
       headers: authHeaders,
     });
     const data = await response.json();
@@ -119,7 +119,7 @@ function App() {
   };
 
   const fetchUploads = async () => {
-    const response = await fetch(`${API_URL}/api/files/list`, {
+    const response = await fetch(`${API_BASE}/api/files/list`, {
       headers: authHeaders,
     });
     const data = await response.json();
@@ -135,7 +135,7 @@ function App() {
     setLoading(true);
     showStatus('', '');
     try {
-      const response = await fetch(`${API_URL}/api/aia/assumptions`, {
+      const response = await fetch(`${API_BASE}/api/aia/assumptions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
@@ -162,7 +162,7 @@ function App() {
     setLoading(true);
     showStatus('', '');
     try {
-      const response = await fetch(`${API_URL}/api/aia/assumptions/${assumptionId}/validate`, {
+      const response = await fetch(`${API_BASE}/api/aia/assumptions/${assumptionId}/validate`, {
         method: 'POST',
         headers: authHeaders,
       });
@@ -185,7 +185,7 @@ function App() {
     setLoading(true);
     showStatus('', '');
     try {
-      const response = await fetch(`${API_URL}/api/aia/simulate`, {
+      const response = await fetch(`${API_BASE}/api/aia/simulate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
@@ -211,7 +211,7 @@ function App() {
     setLoading(true);
     showStatus('', '');
     try {
-      const response = await fetch(`${API_URL}/api/aia/runs/${runId}`, {
+      const response = await fetch(`${API_BASE}/api/aia/runs/${runId}`, {
         headers: authHeaders,
       });
       const data = await response.json();
@@ -234,7 +234,7 @@ function App() {
     setLoading(true);
     showStatus('', '');
     try {
-      const response = await fetch(`${API_URL}/api/aia/runs/${runId}/export.pdf`, {
+      const response = await fetch(`${API_BASE}/api/aia/runs/${runId}/export.pdf`, {
         headers: authHeaders,
       });
       if (!response.ok) {
@@ -291,7 +291,7 @@ function App() {
     setLoading(true);
     showStatus('', '');
     try {
-      const response = await fetch(`${API_URL}/api/auth/login`, {
+      const response = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginForm),
@@ -314,7 +314,7 @@ function App() {
     setLoading(true);
     showStatus('', '');
     try {
-      const response = await fetch(`${API_URL}/api/auth/request-access`, {
+      const response = await fetch(`${API_BASE}/api/auth/request-access`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestForm),
@@ -337,7 +337,7 @@ function App() {
     setLoading(true);
     showStatus('', '');
     try {
-      const response = await fetch(`${API_URL}/api/auth/set-password`, {
+      const response = await fetch(`${API_BASE}/api/auth/set-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -377,7 +377,7 @@ function App() {
     formData.append('file_type', fileType);
     formData.append('file', file);
 
-    const response = await fetch(`${API_URL}/api/files/upload`, {
+    const response = await fetch(`${API_BASE}/api/files/upload`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${auth.token}`,
@@ -429,7 +429,7 @@ function App() {
     setLoading(true);
     showStatus('', '');
     try {
-      const response = await fetch(`${API_URL}/api/aia/pdf/analyze`, {
+      const response = await fetch(`${API_BASE}/api/aia/pdf/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
@@ -459,7 +459,7 @@ function App() {
     setLoading(true);
     showStatus('', '');
     try {
-      const response = await fetch(`${API_URL}/api/aia/pdf/analysis/latest?company_id=${companyId}`, {
+      const response = await fetch(`${API_BASE}/api/aia/pdf/analysis/latest?company_id=${companyId}`, {
         headers: authHeaders,
       });
       const data = await response.json();
