@@ -52,7 +52,11 @@ function App() {
   const [assumptionSets, setAssumptionSets] = useState([]);
   const [simulationRuns, setSimulationRuns] = useState([]);
   const [selectedRun, setSelectedRun] = useState(null);
-  const [resultTab, setResultTab] = useState('pnl');
+  const [resultTab, setResultTab] = useState('summary');
+  const [showMonthly, setShowMonthly] = useState(false);
+  const [uploads, setUploads] = useState([]);
+  const [pdfAnalysis, setPdfAnalysis] = useState(null);
+  const [pdfTab, setPdfTab] = useState('client');
 
   useEffect(() => {
     const stored = localStorage.getItem('aia_auth');
@@ -72,6 +76,7 @@ function App() {
     if (!auth.token || auth.mustChangePassword) return;
     fetchAssumptions();
     fetchRuns();
+    fetchUploads();
   }, [auth.token, auth.mustChangePassword]);
 
   const persistAuth = (nextAuth) => {
@@ -111,6 +116,17 @@ function App() {
       throw new Error(data.detail || 'Failed to load simulation runs');
     }
     setSimulationRuns(data);
+  };
+
+  const fetchUploads = async () => {
+    const response = await fetch(`${API_URL}/api/files/list`, {
+      headers: authHeaders,
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || 'Failed to load uploads');
+    }
+    setUploads(data.uploads || []);
   };
 
   const createAssumptionSet = async () => {
@@ -203,12 +219,43 @@ function App() {
         throw new Error(data.detail || 'Run not found');
       }
       setSelectedRun(data);
-      setResultTab('pnl');
+      setResultTab('summary');
+      setShowMonthly(false);
     } catch (error) {
       showStatus('error', error.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const getYear1Total = (series = []) => series.reduce((sum, value) => sum + value, 0);
+
+  const getYearTotals = (resultJson, key) => {
+    if (!resultJson) return { year1: null, year2: null, year3: null };
+    const year1 = getYear1Total(resultJson[key] || []);
+    const year2 = resultJson[`${key.replace('_monthly', '')}_year2`]?.total ?? null;
+    const year3 = resultJson[`${key.replace('_monthly', '')}_year3`]?.total ?? null;
+    return { year1, year2, year3 };
+  };
+
+  const getMinimumCashMonth = (series = []) => {
+    if (!series.length) return null;
+    let minValue = series[0];
+    let minIndex = 0;
+    series.forEach((value, index) => {
+      if (value < minValue) {
+        minValue = value;
+        minIndex = index;
+      }
+    });
+    return { month: minIndex + 1, value: minValue };
+  };
+
+  const getClosingCashClass = (value) => {
+    if (value == null) return '';
+    if (value < 0) return 'cash-negative';
+    if (value < 20000) return 'cash-warning';
+    return 'cash-positive';
   };
 
   const handleLogin = async (event) => {
@@ -292,6 +339,8 @@ function App() {
     setAssumptionSets([]);
     setSimulationRuns([]);
     setSelectedRun(null);
+    setUploads([]);
+    setPdfAnalysis(null);
   };
 
   const uploadFile = async (fileType, file) => {
@@ -325,6 +374,73 @@ function App() {
       }
       showStatus('success', 'Files uploaded (metadata only).');
       setUploadState({ pl: null, bs: null, loans: null });
+      await fetchUploads();
+    } catch (error) {
+      showStatus('error', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getLatestUploadId = (type) => {
+    const filtered = uploads.filter((item) => item.file_type === type);
+    if (!filtered.length) return null;
+    return filtered[0].id;
+  };
+
+  const analyzePdfs = async () => {
+    const companyId = getCompanyId();
+    if (!companyId) return;
+    const plUploadId = getLatestUploadId('pl_pdf');
+    const bsUploadId = getLatestUploadId('bs_pdf');
+    const loansUploadId = getLatestUploadId('loans_pdf');
+    if (!plUploadId || !bsUploadId) {
+      showStatus('error', 'Upload both P&L and Balance Sheet first.');
+      return;
+    }
+    setLoading(true);
+    showStatus('', '');
+    try {
+      const response = await fetch(`${API_URL}/api/aia/pdf/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({
+          company_id: companyId,
+          pl_upload_id: plUploadId,
+          bs_upload_id: bsUploadId,
+          loans_upload_id: loansUploadId,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'PDF analysis failed');
+      }
+      setPdfAnalysis(data);
+      setPdfTab('client');
+      showStatus('success', 'PDF analysis completed.');
+    } catch (error) {
+      showStatus('error', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadLatestPdfAnalysis = async () => {
+    const companyId = getCompanyId();
+    if (!companyId) return;
+    setLoading(true);
+    showStatus('', '');
+    try {
+      const response = await fetch(`${API_URL}/api/aia/pdf/analysis/latest?company_id=${companyId}`, {
+        headers: authHeaders,
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'No analysis found');
+      }
+      setPdfAnalysis(data);
+      setPdfTab('client');
+      showStatus('success', 'Latest PDF analysis loaded.');
     } catch (error) {
       showStatus('error', error.message);
     } finally {
@@ -504,6 +620,155 @@ function App() {
               <button className="primary" type="button" onClick={handleUpload} disabled={loading}>
                 {loading ? 'Uploading...' : 'Upload'}
               </button>
+              <div className="panel-actions">
+                <button
+                  className="secondary"
+                  type="button"
+                  onClick={analyzePdfs}
+                  disabled={loading || !getLatestUploadId('pl_pdf') || !getLatestUploadId('bs_pdf')}
+                >
+                  Analyze PDFs
+                </button>
+                <button className="link" type="button" onClick={loadLatestPdfAnalysis} disabled={loading}>
+                  Load latest analysis
+                </button>
+              </div>
+              {pdfAnalysis && (
+                <div className="result">
+                  <div className="tabs result-tabs">
+                    <button
+                      className={pdfTab === 'client' ? 'tab active' : 'tab'}
+                      type="button"
+                      onClick={() => setPdfTab('client')}
+                    >
+                      Client View
+                    </button>
+                    <button
+                      className={pdfTab === 'aia' ? 'tab active' : 'tab'}
+                      type="button"
+                      onClick={() => setPdfTab('aia')}
+                    >
+                      AIA View
+                    </button>
+                    <button
+                      className={pdfTab === 'reconciliation' ? 'tab active' : 'tab'}
+                      type="button"
+                      onClick={() => setPdfTab('reconciliation')}
+                    >
+                      Reconciliation
+                    </button>
+                  </div>
+                  {pdfTab === 'client' && (
+                    <div className="table-block">
+                      <h4>P&L rows</h4>
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Label</th>
+                            <th>Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(pdfAnalysis.client_view?.pnl?.rows || []).map((row, index) => (
+                            <tr key={`pnl-${index}`}>
+                              <td>{row.label}</td>
+                              <td>{row.amount ?? 'n/a'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <h4>Balance Sheet rows</h4>
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Label</th>
+                            <th>Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(pdfAnalysis.client_view?.bs?.rows || []).map((row, index) => (
+                            <tr key={`bs-${index}`}>
+                              <td>{row.label}</td>
+                              <td>{row.amount ?? 'n/a'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {pdfTab === 'aia' && (
+                    <div className="table-block">
+                      <h4>P&L categories</h4>
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Category</th>
+                            <th>Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(pdfAnalysis.aia_view?.pnl?.totals_by_category || {}).map(([key, value]) => (
+                            <tr key={`pnl-cat-${key}`}>
+                              <td>{key}</td>
+                              <td>{value}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <h4>Balance Sheet categories</h4>
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Category</th>
+                            <th>Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(pdfAnalysis.aia_view?.bs?.totals_by_category || {}).map(([key, value]) => (
+                            <tr key={`bs-cat-${key}`}>
+                              <td>{key}</td>
+                              <td>{value}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {pdfTab === 'reconciliation' && (
+                    <div className="table-block">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Metric</th>
+                            <th>P&L</th>
+                            <th>Balance Sheet</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>Client total</td>
+                            <td>{pdfAnalysis.reconciliation?.pnl_delta?.client_total ?? 'n/a'}</td>
+                            <td>{pdfAnalysis.reconciliation?.bs_delta?.client_total ?? 'n/a'}</td>
+                          </tr>
+                          <tr>
+                            <td>AIA total</td>
+                            <td>{pdfAnalysis.reconciliation?.pnl_delta?.aia_total ?? 'n/a'}</td>
+                            <td>{pdfAnalysis.reconciliation?.bs_delta?.aia_total ?? 'n/a'}</td>
+                          </tr>
+                          <tr>
+                            <td>Delta</td>
+                            <td>{pdfAnalysis.reconciliation?.pnl_delta?.delta ?? 'n/a'}</td>
+                            <td>{pdfAnalysis.reconciliation?.bs_delta?.delta ?? 'n/a'}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <div className="hint">
+                        Warnings: {(pdfAnalysis.warnings || []).join(' • ') || 'none'}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="card">
@@ -559,6 +824,13 @@ function App() {
                 <div className="result">
                   <div className="tabs result-tabs">
                     <button
+                      className={resultTab === 'summary' ? 'tab active' : 'tab'}
+                      type="button"
+                      onClick={() => setResultTab('summary')}
+                    >
+                      Summary
+                    </button>
+                    <button
                       className={resultTab === 'pnl' ? 'tab active' : 'tab'}
                       type="button"
                       onClick={() => setResultTab('pnl')}
@@ -580,21 +852,136 @@ function App() {
                       Cashflow
                     </button>
                   </div>
-                  <pre className="result-json">
-                    {JSON.stringify(
-                      resultTab === 'pnl'
-                        ? selectedRun.result_json?.pnl_monthly
-                        : resultTab === 'balance_sheet'
-                          ? selectedRun.result_json?.balance_sheet_monthly
-                          : selectedRun.result_json?.cashflow_monthly,
-                      null,
-                      2
-                    )}
-                  </pre>
-                  <div className="hint">
-                    Reconciliation delta:{' '}
-                    {selectedRun.result_json?.reconciliation?.delta ?? 'n/a'}
-                  </div>
+                  {resultTab === 'summary' && (
+                    <div className="summary-grid">
+                      <div className="summary-card">
+                        <span className="hint">Total revenue (Year 1)</span>
+                        <strong>{getYearTotals(selectedRun.result_json, 'pnl_monthly').year1?.toFixed(2) ?? 'n/a'}</strong>
+                      </div>
+                      <div className="summary-card">
+                        <span className="hint">EBITDA / Net result</span>
+                        <strong>{selectedRun.result_json?.pnl_year1?.ebitda ?? selectedRun.result_json?.pnl_year2?.total ?? 'n/a'}</strong>
+                      </div>
+                      <div className="summary-card">
+                        <span className="hint">Ending cash (Year 1)</span>
+                        <strong>{(selectedRun.result_json?.cashflow_monthly || []).slice(-1)[0]?.toFixed(2) ?? 'n/a'}</strong>
+                      </div>
+                      <div className="summary-card">
+                        <span className="hint">Minimum cash month</span>
+                        <strong>
+                          {(() => {
+                            const minCash = getMinimumCashMonth(selectedRun.result_json?.cashflow_monthly || []);
+                            return minCash ? `M${minCash.month} (${minCash.value.toFixed(2)})` : 'n/a';
+                          })()}
+                        </strong>
+                      </div>
+                      <div className="summary-card">
+                        <span className="hint">Net debt end period</span>
+                        <strong>{selectedRun.result_json?.balance_sheet_year3?.net_debt ?? 'n/a'}</strong>
+                      </div>
+                      <div className="summary-card">
+                        <span className="hint">Reconciliation delta</span>
+                        <strong>{selectedRun.result_json?.reconciliation?.delta ?? 'n/a'}</strong>
+                      </div>
+                    </div>
+                  )}
+                  {resultTab === 'pnl' && (
+                    <div className="table-block">
+                      <div className="table-header">
+                        <h4>P&L summary</h4>
+                        <label className="toggle">
+                          <input
+                            type="checkbox"
+                            checked={showMonthly}
+                            onChange={() => setShowMonthly(!showMonthly)}
+                          />
+                          Show monthly breakdown
+                        </label>
+                      </div>
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Line item</th>
+                            <th>Year 1 total</th>
+                            <th>Year 2</th>
+                            <th>Year 3</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {['Revenue', 'Operating Costs', 'EBITDA', 'Depreciation', 'Interest', 'Net Income'].map((label) => (
+                            <tr key={label}>
+                              <td>{label}</td>
+                              <td>{getYearTotals(selectedRun.result_json, 'pnl_monthly').year1?.toFixed(2) ?? 'n/a'}</td>
+                              <td>{getYearTotals(selectedRun.result_json, 'pnl_monthly').year2 ?? 'n/a'}</td>
+                              <td>{getYearTotals(selectedRun.result_json, 'pnl_monthly').year3 ?? 'n/a'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {showMonthly && (
+                        <pre className="result-json">
+                          {JSON.stringify(selectedRun.result_json?.pnl_monthly || [], null, 2)}
+                        </pre>
+                      )}
+                    </div>
+                  )}
+                  {resultTab === 'cashflow' && (
+                    <div className="table-block">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Line item</th>
+                            <th>Year 1 total</th>
+                            <th>Year 2</th>
+                            <th>Year 3</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {['Opening Cash', 'Operating Cash', 'Debt Service', 'RS&DE', 'Closing Cash'].map((label, index) => {
+                            const totals = getYearTotals(selectedRun.result_json, 'cashflow_monthly');
+                            const closingCash = (selectedRun.result_json?.cashflow_monthly || []).slice(-1)[0];
+                            return (
+                              <tr key={label}>
+                                <td>{label}</td>
+                                <td className={index === 4 ? getClosingCashClass(closingCash) : ''}>
+                                  {(index === 4 ? closingCash : totals.year1)?.toFixed?.(2) ?? 'n/a'}
+                                </td>
+                                <td>{totals.year2 ?? 'n/a'}</td>
+                                <td>{totals.year3 ?? 'n/a'}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {resultTab === 'balance_sheet' && (
+                    <div className="table-block">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Line item</th>
+                            <th>Year 1 total</th>
+                            <th>Year 2</th>
+                            <th>Year 3</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {['Assets', 'Liabilities', 'Equity', 'Intangible Assets'].map((label) => {
+                            const totals = getYearTotals(selectedRun.result_json, 'balance_sheet_monthly');
+                            return (
+                              <tr key={label}>
+                                <td>{label}</td>
+                                <td>{totals.year1?.toFixed(2) ?? 'n/a'}</td>
+                                <td>{totals.year2 ?? 'n/a'}</td>
+                                <td>{totals.year3 ?? 'n/a'}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

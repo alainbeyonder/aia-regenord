@@ -271,6 +271,7 @@ textarea {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .tag {
@@ -300,4 +301,72 @@ textarea {
   font-size: 12px;
   max-height: 220px;
   overflow: auto;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.summary-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+  display: grid;
+  gap: 6px;
+}
+
+.table-block {
+  display: grid;
+  gap: 12px;
+}
+
+.table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table th,
+.data-table td {
+  border: 1px solid var(--border);
+  padding: 8px;
+  text-align: left;
+}
+
+.data-table th {
+  background: #f5f7fb;
+  font-weight: 600;
+}
+
+.cash-negative {
+  color: #cf1322;
+  font-weight: 600;
+}
+
+.cash-warning {
+  color: #d89614;
+  font-weight: 600;
+}
+
+.cash-positive {
+  color: #389e0d;
+  font-weight: 600;
 }
