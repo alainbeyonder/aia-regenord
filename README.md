@@ -644,3 +644,28 @@ curl -X GET "$BASE/api/aia/runs?company_id=1" \
 curl -X GET "$BASE/api/aia/runs/1" \
   -H "Authorization: Bearer USER_ACCESS_TOKEN"
 ```
+
+## 📄 PDF Analyze V1
+
+Analyse des PDF QuickBooks (P&L + Balance Sheet) pour générer une vue client et une vue AIA.
+
+### Analyze PDFs
+
+```bash
+curl -X POST "$BASE/api/aia/pdf/analyze" \
+  -H "Authorization: Bearer USER_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "company_id": 1,
+    "pl_upload_id": 10,
+    "bs_upload_id": 11,
+    "loans_upload_id": 12
+  }'
+```
+
+### Latest analysis
+
+```bash
+curl -X GET "$BASE/api/aia/pdf/analysis/latest?company_id=1" \
+  -H "Authorization: Bearer USER_ACCESS_TOKEN"
+```

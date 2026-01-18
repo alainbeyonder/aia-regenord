@@ -10,7 +10,7 @@ from app.api.router import api_router
 from app.models import (
     Company, QBOConnection, QBOAccount, QBOTransaction,
     QBOTransactionLine, QBOReportSnapshot, Scenario, Projection,
-    User, AccessRequest, Upload, AssumptionSet, SimulationRun,
+    User, AccessRequest, Upload, AssumptionSet, SimulationRun, PdfAnalysis,
 )
 
 app = FastAPI(

@@ -15,6 +15,7 @@ from .access_request import AccessRequest
 from .upload import Upload
 from .assumption_set import AssumptionSet
 from .simulation_run import SimulationRun
+from .pdf_analysis import PdfAnalysis
 
 __all__ = [
     "Base",
@@ -31,4 +32,5 @@ __all__ = [
     "Upload",
     "AssumptionSet",
     "SimulationRun",
+    "PdfAnalysis",
 ]

@@ -21,3 +21,4 @@ class Company(Base):
     uploads = relationship("Upload", back_populates="company")
     assumption_sets = relationship("AssumptionSet", back_populates="company")
     simulation_runs = relationship("SimulationRun", back_populates="company")
+    pdf_analyses = relationship("PdfAnalysis", back_populates="company")

@@ -16,8 +16,12 @@ from app.core.database import get_db
 from app.api.auth import get_current_user
 from app.models.assumption_set import AssumptionSet
 from app.models.simulation_run import SimulationRun
+from app.models.pdf_analysis import PdfAnalysis
+from app.models.upload import Upload
 from app.models.user import User
 from app.services.aia_simulation_service import AIASimulationService
+from app.services.aia_narration_service import AIANarrationService
+from app.services.pdf_analyze_service import PdfAnalyzeService
 from app.services.aia_mapping_service import AIAFinancialMappingService
 
 router = APIRouter(prefix="/aia", tags=["aia"])
@@ -72,6 +76,19 @@ class SimulationRunResponse(BaseModel):
     result_json: Dict[str, Any]
     created_by_user_id: int
     created_at: datetime
+
+
+class ExplainRequest(BaseModel):
+    company_id: int
+    run_id: int
+    tone: Optional[str] = "executive"
+
+
+class PdfAnalyzeRequest(BaseModel):
+    company_id: int
+    pl_upload_id: int
+    bs_upload_id: int
+    loans_upload_id: Optional[int] = None
 
 
 def _resolve_company_id(company_id: Optional[int], current_user: User) -> int:
@@ -334,3 +351,127 @@ def get_simulation_run(
         raise HTTPException(status_code=404, detail="Simulation run not found")
     _ensure_company_access(run.company_id, current_user)
     return run
+
+
+@router.post("/explain")
+def explain_run(
+    payload: ExplainRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    allowed_tones = {"bank", "executive", "internal"}
+    tone = payload.tone or "executive"
+    if tone not in allowed_tones:
+        raise HTTPException(status_code=400, detail="Invalid tone")
+
+    company_id = _resolve_company_id(payload.company_id, current_user)
+    run = db.query(SimulationRun).filter(SimulationRun.id == payload.run_id).one_or_none()
+    if not run:
+        raise HTTPException(status_code=404, detail="Simulation run not found")
+    if run.company_id != company_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    assumption_set = (
+        db.query(AssumptionSet)
+        .filter(AssumptionSet.id == run.assumption_set_id)
+        .one_or_none()
+    )
+    if not assumption_set or assumption_set.company_id != company_id:
+        raise HTTPException(status_code=404, detail="Assumption set not found")
+
+    try:
+        service = AIANarrationService()
+        return service.explain(
+            tone=tone,
+            result_json=run.result_json,
+            assumptions_json=assumption_set.payload_json,
+        )
+    except RuntimeError as error:
+        raise HTTPException(status_code=500, detail=str(error))
+    except ValueError as error:
+        raise HTTPException(status_code=502, detail=str(error))
+
+
+@router.post("/pdf/analyze")
+def analyze_pdf(
+    payload: PdfAnalyzeRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    company_id = _resolve_company_id(payload.company_id, current_user)
+
+    uploads = (
+        db.query(Upload)
+        .filter(Upload.id.in_([payload.pl_upload_id, payload.bs_upload_id]))
+        .all()
+    )
+    if len(uploads) != 2:
+        raise HTTPException(status_code=404, detail="Upload not found")
+    upload_map = {upload.id: upload for upload in uploads}
+    pl_upload = upload_map.get(payload.pl_upload_id)
+    bs_upload = upload_map.get(payload.bs_upload_id)
+
+    if pl_upload.company_id != company_id or bs_upload.company_id != company_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    loans_upload = None
+    if payload.loans_upload_id:
+        loans_upload = db.query(Upload).filter(Upload.id == payload.loans_upload_id).one_or_none()
+        if not loans_upload:
+            raise HTTPException(status_code=404, detail="Loans upload not found")
+        if loans_upload.company_id != company_id:
+            raise HTTPException(status_code=403, detail="Forbidden")
+
+    service = PdfAnalyzeService()
+    client_view, aia_view, reconciliation, warnings = service.analyze(
+        pl_path=pl_upload.storage_url,
+        bs_path=bs_upload.storage_url,
+    )
+
+    analysis = PdfAnalysis(
+        company_id=company_id,
+        pl_upload_id=pl_upload.id,
+        bs_upload_id=bs_upload.id,
+        loans_upload_id=loans_upload.id if loans_upload else None,
+        client_view_json=client_view,
+        aia_view_json=aia_view,
+        reconciliation_json=reconciliation,
+        warnings_json=warnings,
+        created_by_user_id=current_user.id,
+    )
+    db.add(analysis)
+    db.commit()
+    db.refresh(analysis)
+
+    return {
+        "analysis_id": analysis.id,
+        "client_view": client_view,
+        "aia_view": aia_view,
+        "reconciliation": reconciliation,
+        "warnings": warnings,
+    }
+
+
+@router.get("/pdf/analysis/latest")
+def latest_pdf_analysis(
+    company_id: Optional[int] = Query(None, description="ID de l'entreprise"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    company_id = _resolve_company_id(company_id, current_user)
+    analysis = (
+        db.query(PdfAnalysis)
+        .filter(PdfAnalysis.company_id == company_id)
+        .order_by(PdfAnalysis.created_at.desc())
+        .first()
+    )
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    return {
+        "analysis_id": analysis.id,
+        "client_view": analysis.client_view_json,
+        "aia_view": analysis.aia_view_json,
+        "reconciliation": analysis.reconciliation_json,
+        "warnings": analysis.warnings_json,
+        "created_at": analysis.created_at.isoformat(),
+    }

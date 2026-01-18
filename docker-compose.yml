@@ -52,6 +52,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - aia_storage:/app/storage
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     networks:
       - aia_network
@@ -77,6 +78,8 @@ volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  aia_storage:
     driver: local
 
 networks:

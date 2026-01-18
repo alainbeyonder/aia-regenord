@@ -27,3 +27,4 @@ class User(Base):
     uploads = relationship("Upload", back_populates="user")
     assumption_sets = relationship("AssumptionSet", back_populates="created_by_user")
     simulation_runs = relationship("SimulationRun", back_populates="created_by_user")
+    pdf_analyses = relationship("PdfAnalysis", back_populates="created_by_user")
