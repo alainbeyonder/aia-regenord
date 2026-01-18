@@ -56,6 +56,11 @@ class AssumptionSetResponse(BaseModel):
     updated_at: datetime
 
 
+class BaselinePayload(BaseModel):
+    type: str
+    analysis_id: Optional[int] = None
+
+
 class SimulationCreate(BaseModel):
     company_id: int
     assumption_set_id: int
@@ -63,6 +68,7 @@ class SimulationCreate(BaseModel):
     horizon_months: int = Field(12, ge=1, le=36)
     horizon_years: int = Field(2, ge=0, le=5)
     baseline_refs: Optional[Dict[str, Any]] = None
+    baseline: Optional[BaselinePayload] = None
 
 
 class SimulationRunResponse(BaseModel):
@@ -74,6 +80,9 @@ class SimulationRunResponse(BaseModel):
     horizon_months: int
     horizon_years: int
     result_json: Dict[str, Any]
+    baseline_type: Optional[str] = None
+    baseline_id: Optional[int] = None
+    baseline_snapshot_json: Optional[Dict[str, Any]] = None
     created_by_user_id: int
     created_at: datetime
 
@@ -302,12 +311,43 @@ def simulate(
     period_end = payload.period_start + relativedelta(
         months=payload.horizon_months + (payload.horizon_years * 12)
     )
-    result_json = AIASimulationService.build_placeholder_result(
-        company_id=company_id,
-        assumption_set_id=payload.assumption_set_id,
-        horizon_months=payload.horizon_months,
-        horizon_years=payload.horizon_years,
-    )
+    baseline_type = None
+    baseline_id = None
+    baseline_snapshot = None
+
+    if payload.baseline and payload.baseline.type == "pdf":
+        if not payload.baseline.analysis_id:
+            raise HTTPException(status_code=400, detail="analysis_id required for pdf baseline")
+        analysis = (
+            db.query(PdfAnalysis)
+            .filter(PdfAnalysis.id == payload.baseline.analysis_id)
+            .one_or_none()
+        )
+        if not analysis or analysis.company_id != company_id:
+            raise HTTPException(status_code=404, detail="PDF analysis not found")
+
+        baseline_snapshot = {
+            "baseline_type": "pdf",
+            "analysis_id": analysis.id,
+            "baseline_pnl_totals_by_category": analysis.aia_view_json.get("pnl", {}).get("totals_by_category", {}),
+            "baseline_balance_sheet_totals_by_category": analysis.aia_view_json.get("bs", {}).get("totals_by_category", {}),
+            "reconciliation": analysis.reconciliation_json,
+        }
+        baseline_type = "pdf"
+        baseline_id = analysis.id
+        result_json = AIASimulationService.build_from_baseline(
+            baseline_snapshot=baseline_snapshot,
+            assumptions=assumption_set.payload_json or {},
+            horizon_months=payload.horizon_months,
+            horizon_years=payload.horizon_years,
+        )
+    else:
+        result_json = AIASimulationService.build_placeholder_result(
+            company_id=company_id,
+            assumption_set_id=payload.assumption_set_id,
+            horizon_months=payload.horizon_months,
+            horizon_years=payload.horizon_years,
+        )
 
     run = SimulationRun(
         company_id=company_id,
@@ -317,6 +357,9 @@ def simulate(
         horizon_months=payload.horizon_months,
         horizon_years=payload.horizon_years,
         result_json=result_json,
+        baseline_type=baseline_type,
+        baseline_id=baseline_id,
+        baseline_snapshot_json=baseline_snapshot,
         created_by_user_id=current_user.id,
     )
     db.add(run)
