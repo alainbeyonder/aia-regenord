@@ -238,7 +238,11 @@ cp frontend/.env.local.example frontend/.env.local
 Puis ajustez la valeur :
 
 ```env
+# Vite
 VITE_API_BASE=http://127.0.0.1:8000
+
+# Create React App (current setup)
+REACT_APP_API_BASE=http://127.0.0.1:8000
 ```
 
 ### Étape 7: Initialiser la Base de Données
