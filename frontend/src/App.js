@@ -228,6 +228,34 @@ function App() {
     }
   };
 
+  const downloadRunPdf = async (runId) => {
+    const companyId = getCompanyId();
+    if (!companyId) return;
+    setLoading(true);
+    showStatus('', '');
+    try {
+      const response = await fetch(`${API_URL}/api/aia/runs/${runId}/export.pdf`, {
+        headers: authHeaders,
+      });
+      if (!response.ok) {
+        throw new Error('PDF export failed');
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `AIA_Report_company${companyId}_run${runId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      showStatus('error', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getYear1Total = (series = []) => series.reduce((sum, value) => sum + value, 0);
 
   const getYearTotals = (resultJson, key) => {
@@ -814,9 +842,14 @@ function App() {
                       <strong>Run #{run.id}</strong>
                       <div className="hint">{run.period_start} → {run.period_end}</div>
                     </div>
-                    <button className="secondary" type="button" onClick={() => loadRun(run.id)} disabled={loading}>
-                      View result
-                    </button>
+                    <div className="panel-actions">
+                      <button className="secondary" type="button" onClick={() => loadRun(run.id)} disabled={loading}>
+                        View result
+                      </button>
+                      <button className="primary" type="button" onClick={() => downloadRunPdf(run.id)} disabled={loading}>
+                        Download PDF
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
